@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { z } from "zod";
+import { createPostSchema } from "~/schemas/post.schemas";
 
 import {
   createTRPCRouter,
@@ -82,11 +83,7 @@ export const postsRouter = createTRPCRouter({
     ),
 
   create: privateProcedure
-    .input(
-      z.object({
-        content: z.string().min(1).max(280),
-      })
-    )
+    .input(createPostSchema)
     .mutation(async ({ ctx, input }) => {
       const authorId = ctx.userId;
 

@@ -1,28 +1,37 @@
 import { type NextPage } from "next";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-
 import { useUser, SignInButton } from "@clerk/nextjs";
-import { api } from "~/utils/api";
 import Image from "next/image";
-import LoadingSpinner, { LoadingPage } from "~/components/loading";
-import { useState } from "react";
 import toast from "react-hot-toast";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { type z } from "zod";
+
+import { api } from "~/utils/api";
+import LoadingSpinner, { LoadingPage } from "~/components/loading";
 import PageLayout from "~/components/layout";
 import PostView from "~/components/PostView";
+import { createPostSchema } from "~/schemas/post.schemas";
 
 dayjs.extend(relativeTime);
 
+type FormData = z.infer<typeof createPostSchema>;
 const CreatePostWizard = () => {
   const { user } = useUser();
 
-  const [input, setInput] = useState("");
+  const { register, watch, handleSubmit, reset } = useForm<FormData>({
+    resolver: zodResolver(createPostSchema),
+    defaultValues: {
+      content: "",
+    },
+  });
 
   const ctx = api.useContext();
 
   const { mutate, isLoading: isPosting } = api.posts.create.useMutation({
     onSuccess: () => {
-      setInput("");
+      reset();
       void ctx.posts.getAll.invalidate();
     },
     onError: (e) => {
@@ -36,6 +45,14 @@ const CreatePostWizard = () => {
     },
   });
 
+  const onSubmit = handleSubmit(
+    (data) => mutate(data),
+    (errors) => {
+      const errorMessage = errors.content?.message;
+      toast.error(errorMessage ?? "");
+    }
+  );
+
   if (!user) return null;
 
   return (
@@ -47,27 +64,22 @@ const CreatePostWizard = () => {
         width={56}
         height={56}
       />
-      <input
-        placeholder="Make a comment!"
-        className="grow bg-transparent outline-none"
-        type="text"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        disabled={isPosting}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            if (input != "") mutate({ content: input });
-          }
-        }}
-      />
-      <button
-        className="flex w-12 items-center justify-center disabled:opacity-50"
-        onClick={() => mutate({ content: input })}
-        disabled={input === "" || isPosting}
-      >
-        {isPosting ? <LoadingSpinner size={20} /> : "Post"}
-      </button>
+      <form className="flex w-full gap-3" onSubmit={onSubmit}>
+        <input
+          placeholder="Make a comment!"
+          className="grow bg-transparent outline-none"
+          type="text"
+          {...register("content")}
+          disabled={isPosting}
+        />
+        <button
+          type="submit"
+          className="flex w-12 items-center justify-center disabled:opacity-50"
+          disabled={watch("content") === "" || isPosting}
+        >
+          {isPosting ? <LoadingSpinner size={20} /> : "Post"}
+        </button>
+      </form>
     </div>
   );
 };
