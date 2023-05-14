@@ -3,7 +3,13 @@ import Head from "next/head";
 import React from "react";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import Image from "next/image";
 
+import PageLayout from "~/components/layout";
+import { LoadingPage } from "~/components/loading";
+import PostView from "~/components/PostView";
+
+import generateSSGHelper from "~/utils/ssgHelper";
 import { api } from "~/utils/api";
 
 dayjs.extend(relativeTime);
@@ -21,8 +27,9 @@ const ProfileFeed = ({ userId }: { userId: string }) => {
     </div>
   );
 };
-const SinglePostPage: NextPage<{ username: string }> = ({ username }) => {
-  const { data: user } = api.profile.getUserByUsername.useQuery({ username });
+
+const ProfilePage: NextPage<{ username: string }> = ({ username }) => {
+  const { data: user } = api.profile.getByUsername.useQuery({ username });
   if (!user) return <div>404</div>;
   const handle = `@${user.username}`;
 
@@ -49,28 +56,15 @@ const SinglePostPage: NextPage<{ username: string }> = ({ username }) => {
   );
 };
 
-import { createServerSideHelpers } from "@trpc/react-query/server";
-import { appRouter } from "~/server/api/root";
-import { prisma } from "~/server/db";
-import superjson from "superjson";
-import PageLayout from "~/components/layout";
-import Image from "next/image";
-import { LoadingPage } from "~/components/loading";
-import PostView from "~/components/PostView";
-
 // Prefetch user data on serverside
 export const getStaticProps: GetStaticProps = async (context) => {
-  const ssg = createServerSideHelpers({
-    router: appRouter,
-    ctx: { prisma, userId: null },
-    transformer: superjson, // optional - adds superjson serialization
-  });
+  const ssg = generateSSGHelper();
 
   const slug = context.params?.slug;
   if (typeof slug !== "string") throw new Error("no slug");
   const username = slug.replace("@", "");
 
-  await ssg.profile.getUserByUsername.prefetch({ username });
+  await ssg.profile.getByUsername.prefetch({ username });
 
   return {
     props: {
@@ -84,4 +78,4 @@ export const getStaticPaths = () => {
   return { paths: [], fallback: "blocking" };
 };
 
-export default SinglePostPage;
+export default ProfilePage;

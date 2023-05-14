@@ -1,27 +1,53 @@
-import { type NextPage } from "next";
+import { type GetStaticProps, type NextPage } from "next";
 import Head from "next/head";
 import React from "react";
-import { LoadingPage } from "~/components/loading";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import Image from "next/image";
+
+import PageLayout from "~/components/layout";
+
+import generateSSGHelper from "~/utils/ssgHelper";
 import { api } from "~/utils/api";
+import PostView from "~/components/PostView";
 
-const SinglePostPage: NextPage = () => {
-  const { data, isLoading } = api.profile.getUserByUsername.useQuery({
-    username: "raychungno1",
-  });
+dayjs.extend(relativeTime);
 
-  if (isLoading) return <LoadingPage />;
+const SinglePostPage: NextPage<{ id: string }> = ({ id }) => {
+  const { data } = api.posts.getById.useQuery({ id });
   if (!data) return <div>404</div>;
+  const { post, author } = data;
+  const handle = `@${author.username}`;
 
   return (
-    <>
+    <PageLayout>
       <Head>
-        <title>Post</title>
+        <title>{`${post.content} - ${handle}`}</title>
       </Head>
-      <main className="flex h-screen justify-center">
-        <div>Post View</div>
-      </main>
-    </>
+      <PostView post={post} author={author} />
+    </PageLayout>
   );
+};
+
+// Prefetch post data on serverside
+export const getStaticProps: GetStaticProps = async (context) => {
+  const ssg = generateSSGHelper();
+
+  const id = context.params?.id;
+  if (typeof id !== "string") throw new Error("no id");
+
+  await ssg.posts.getById.prefetch({ id });
+
+  return {
+    props: {
+      trpcState: ssg.dehydrate(),
+      id,
+    },
+  };
+};
+
+export const getStaticPaths = () => {
+  return { paths: [], fallback: "blocking" };
 };
 
 export default SinglePostPage;

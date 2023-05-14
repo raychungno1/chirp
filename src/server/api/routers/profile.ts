@@ -5,7 +5,7 @@ import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import filterUserForClient from "~/utils/filteredUser";
 
 export const profileRouter = createTRPCRouter({
-  getUserByUsername: publicProcedure
+  getByUsername: publicProcedure
     .input(z.object({ username: z.string() }))
     .query(async ({ input }) => {
       const { username } = input;
