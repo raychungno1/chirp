@@ -22,7 +22,7 @@ const ProfileFeed = ({ userId }: { userId: string }) => {
   return (
     <div className="flex flex-col">
       {data.map(({ post, author }) => (
-        <PostView post={post} author={author} key={post.id} />
+        <PostView post={post} author={author} key={post.id} link />
       ))}
     </div>
   );
